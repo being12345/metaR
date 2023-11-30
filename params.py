@@ -59,7 +59,7 @@ def get_params():
 
 data_dir = {
     'train_tasks_in_train': '/train_tasks_in_train.json',
-    'train_tasks': '/continual_train_tasks.json',
+    'train_tasks': '/train_tasks.json',
     'test_tasks': '/test_tasks.json',
     'dev_tasks': '/continual_dev_tasks.json',
     'few_shot_dev_tasks': '/dev_tasks.json',
