@@ -31,9 +31,10 @@ class DataLoader(object):
 
     def next_one(self, is_last, is_base):
         # shift curr_rel_idx to 0 after one circle of all relations
-        # if self.curr_rel_idx % self.num_rels == 0:    # TODO: It's no need in continual learning
-        #     random.shuffle(self.all_rels)
-        #     self.curr_rel_idx = 0
+        if self.curr_rel_idx % self.num_rels == 0:    # TODO: It's no need in continual learning
+            random.shuffle(self.all_rels)
+            self.curr_rel_idx = 0
+
         few = self.bfew if is_base is True else self.few
         nq = self.bnq if is_base is True else self.nq
 

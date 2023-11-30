@@ -13,7 +13,7 @@ def get_params():
     args.add_argument("-nq", "--num_query", default=3, type=int)
     args.add_argument("-bfew", "--base_classes_few", default=3, type=int)
     args.add_argument("-bnq", "--base_classes_num_query", default=3, type=int)
-    args.add_argument("-br", "--base_classes_relation", default=30, type=int)
+    args.add_argument("-br", "--base_classes_relation", default=1024, type=int)
     args.add_argument("-metric", "--metric", default="MRR", choices=["MRR", "Hits@10", "Hits@5", "Hits@1"])
 
     args.add_argument("-dim", "--embed_dim", default=100, type=int)
@@ -21,11 +21,11 @@ def get_params():
     args.add_argument("-lr", "--learning_rate", default=0.001, type=float)
     args.add_argument("-es_p", "--early_stopping_patience", default=30, type=int)
 
-    # args.add_argument("-epo", "--epoch", default=100000, type=int)
-    args.add_argument("-epo", "--epoch", default=3, type=int)
-    args.add_argument("-prt_epo", "--print_epoch", default=50, type=int)
-    args.add_argument("-eval_epo", "--eval_epoch", default=2, type=int)
-    # args.add_argument("-eval_epo", "--eval_epoch", default=1000, type=int)
+    args.add_argument("-epo", "--epoch", default=100000, type=int)
+    # args.add_argument("-epo", "--epoch", default=3, type=int)
+    args.add_argument("-prt_epo", "--print_epoch", default=100, type=int)
+    # args.add_argument("-eval_epo", "--eval_epoch", default=2, type=int)
+    args.add_argument("-eval_epo", "--eval_epoch", default=1000, type=int)
     args.add_argument("-ckpt_epo", "--checkpoint_epoch", default=1000, type=int)
 
     args.add_argument("-b", "--beta", default=5, type=float)
