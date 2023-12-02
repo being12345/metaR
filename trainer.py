@@ -176,18 +176,25 @@ class Trainer:
         bad_counts = 0
         num_tasks = 8  # TODO: update it in parser
         MRR_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
-        Hit1_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
-        Hit5_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
-        Hit10_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
+        Hit1_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit1 metrics
+        Hit5_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit5 metrics
+        Hit10_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit10 metrics
         val_mat = [MRR_val_mat, Hit1_val_mat, Hit5_val_mat, Hit10_val_mat]
 
+        train_task = None
         for task in range(num_tasks):
             # training by epoch
             for e in range(self.epoch):
                 is_last = False if e != self.epoch - 1 else True
                 is_base = True if task == 0 else False
                 # sample one batch from data_loader
-                train_task, curr_rel = self.train_data_loader.next_batch(is_last, is_base)
+                for i in range(50):  # batch_size 1500
+                    cur_train_task, curr_rel = self.train_data_loader.next_batch(is_last, is_base)
+                    if i == 0:
+                        train_task = cur_train_task
+                    else:
+                        for j, cur in enumerate(cur_train_task):
+                            train_task[j] = train_task[j] + cur
                 # Test train_task num
                 loss, _, _ = self.do_one_step(train_task, iseval=False, curr_rel=curr_rel)
                 # if e == 0:  # TODO: test module move later
