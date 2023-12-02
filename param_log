@@ -1,2 +1,2 @@
-epoch: [2000]
-eval_epoch: [999]
+# test batch_size batch_size == 1500
+python main.py --epoch 5500
