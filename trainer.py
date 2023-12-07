@@ -174,6 +174,9 @@ class Trainer:
         return loss, p_score, n_score
 
     def train(self):
+        novel_task = None
+        critical_task = []
+
         # initialization
         per_task_masks, consolidated_masks = {}, {}
 
@@ -192,14 +195,13 @@ class Trainer:
                 is_base = True if task == 0 else False
                 # sample one batch from data_loader
                 train_task, curr_rel = self.train_data_loader.next_batch(is_last, is_base)
-                # replay important base relation
+                novel_task = deepcopy(train_task) if not is_base else None
+
+                # replay important base and novel relation
                 if not is_base:
-                    base_mask = F.sigmoid(self.metaR.relation_learner.base_mask.w_m)
-                    mask = base_mask.sum(axis=-1).sum(axis=-1).max() == base_mask.sum(axis=-1).sum(axis=-1)
-                    idx = (mask > 0).nonzero(as_tuple=True)[0]
-                    for i in idx:
-                        for j, cur in enumerate(train_task):
-                            train_task[j] = train_task[j] + (base_task[j][i.item()],)
+                    for j, cur in enumerate(train_task):
+                        train_task[j] = train_task[j] + critical_task[j]
+
                 # Test train_task num
                 loss, _, _ = self.do_one_step(train_task, consolidated_masks, epoch, is_base, iseval=False,
                                               curr_rel=curr_rel)
@@ -223,7 +225,7 @@ class Trainer:
                     valid_data = self.fw_eval(task, istest=False, epoch=e)  # few shot val
                     self.write_fw_validating_log(valid_data, val_mat, task, e)
 
-                if task != 0 and e == self.epoch - 1:
+                if task != 0 and e == self.epoch - 1 and task == -1:  # TODO: remove latter
                     print('Epoch  {} has finished, validating continual learning...'.format(e))
 
                     valid_data = self.novel_continual_eval(previous_relation, task,
@@ -231,7 +233,18 @@ class Trainer:
                     self.write_cl_validating_log(valid_data, val_mat, task)
 
             previous_relation = curr_rel  # cache previous relations
-            base_task = train_task if is_base else base_task
+
+            # replay important base relation
+            if is_base:
+                base_mask = F.sigmoid(self.metaR.relation_learner.base_mask.w_m)
+                mask = base_mask.sum(axis=-1).sum(axis=-1).max() == base_mask.sum(axis=-1).sum(axis=-1)
+                idx = (mask > 0).nonzero(as_tuple=True)[0]
+                for i in idx:
+                    for j, cur in enumerate(train_task):
+                        critical_task.append((train_task[j][i.item()],))
+            else:   # TODO: replay novel relation
+                for j, cur in enumerate(train_task):
+                    critical_task[j] = critical_task[j] + novel_task[j]
 
             # Consolidate task masks to keep track of parameters to-update or not
             per_task_masks[task] = self.metaR.relation_learner.get_masks()
