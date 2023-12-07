@@ -1,4 +1,7 @@
+from copy import deepcopy
+
 import numpy as np
+import torch.nn.functional as F
 
 from models import *
 from tensorboardX import SummaryWriter
@@ -173,10 +176,11 @@ class Trainer:
         return loss, p_score, n_score
 
     def train(self):
+        novel_task = None
+        critical_task = []
+
         # initialization
-        best_epoch = 0
-        best_value = 0
-        bad_counts = 0
+        per_task_masks, consolidated_masks = {}, {}
 
         MRR_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
         Hit1_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
@@ -193,6 +197,13 @@ class Trainer:
                 is_base = True if task == 0 else False
                 # sample one batch from data_loader
                 train_task, curr_rel = self.train_data_loader.next_batch(is_last, is_base)
+                novel_task = deepcopy(train_task) if not is_base else None
+
+                # replay important base and novel relation
+                if not is_base:
+                    for j, cur in enumerate(train_task):
+                        train_task[j] = train_task[j] + critical_task[j]
+
                 # Test train_task num
                 loss, _, _ = self.do_one_step(train_task, iseval=False, curr_rel=curr_rel)
                 # if e == 0:  # TODO: test module move later
@@ -202,7 +213,7 @@ class Trainer:
                 if e % self.print_epoch == 0:
                     loss_num = loss.item()
                     self.write_training_log({'Loss': loss_num}, task, e)
-                    print("Epoch: {}\tLoss: {:.4f}".format(e, loss_num))
+                    print("Epoch: {}\tLoss: {:.4f} relation: {}".format(e, loss_num, len(train_task[0])))
 
                 # save checkpoint on specific epoch
                 if e % self.checkpoint_epoch == 0 and e != 0:
@@ -224,10 +235,30 @@ class Trainer:
 
             previous_relation = curr_rel  # cache previous relations
 
-        np.savetxt(os.path.join(self.csv_dir, 'MRR.csv'), MRR_val_mat, delimiter=",")
-        np.savetxt(os.path.join(self.csv_dir, 'Hit@10.csv'), Hit10_val_mat, delimiter=",")
-        np.savetxt(os.path.join(self.csv_dir, 'Hit@5.csv'), Hit5_val_mat, delimiter=",")
-        np.savetxt(os.path.join(self.csv_dir, 'Hit@1.csv'), Hit1_val_mat, delimiter=",")
+            # replay important base relation
+            if is_base:
+                base_mask = F.sigmoid(self.metaR.relation_learner.base_mask.w_m)
+                mask = base_mask.sum(axis=-1).sum(axis=-1).max() == base_mask.sum(axis=-1).sum(axis=-1)
+                idx = (mask > 0).nonzero(as_tuple=True)[0]
+                for i in idx:
+                    for j, cur in enumerate(train_task):
+                        critical_task.append((train_task[j][i.item()],))
+            else:   # TODO: replay novel relation
+                for j, cur in enumerate(train_task):
+                    critical_task[j] = critical_task[j] + novel_task[j]
+
+            # Consolidate task masks to keep track of parameters to-update or not
+            per_task_masks[task] = self.metaR.relation_learner.get_masks()
+            if task == 0:
+                consolidated_masks = deepcopy(per_task_masks[task])
+            else:
+                for key in per_task_masks[task].keys():
+                    # Operation on sparsity
+                    if consolidated_masks[key] is not None and per_task_masks[task][key] is not None:
+                        consolidated_masks[key] = 1 - ((1 - consolidated_masks[key]) * (1 - per_task_masks[task][key]))
+
+        self.save_metrics(Hit10_val_mat, Hit1_val_mat, Hit5_val_mat, MRR_val_mat)
+
         print('Training has finished')
         print('Finish')
 
