@@ -225,7 +225,7 @@ class Trainer:
                     valid_data = self.fw_eval(task, istest=False, epoch=e)  # few shot val
                     self.write_fw_validating_log(valid_data, val_mat, task, e)
 
-                if task != 0 and e == self.epoch - 1 and task == -1:  # TODO: remove latter
+                if task != 0 and e == self.epoch - 1:
                     print('Epoch  {} has finished, validating continual learning...'.format(e))
 
                     valid_data = self.novel_continual_eval(previous_relation, task,
@@ -242,7 +242,7 @@ class Trainer:
                 for i in idx:
                     for j, cur in enumerate(train_task):
                         critical_task.append((train_task[j][i.item()],))
-            else:   # TODO: replay novel relation
+            else:  # TODO: replay novel relation
                 for j, cur in enumerate(train_task):
                     critical_task[j] = critical_task[j] + novel_task[j]
 
