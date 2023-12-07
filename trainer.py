@@ -19,6 +19,20 @@ def test_task(train_task):
         f'query_num: {len(query[0])} query_neg_num: {len(negative[0])}')
 
 
+# def euclidean_dist(x, y):
+#     n = x.size(0)
+#     m = y.size(0)
+#     d = x.size(1)
+#
+#     return torch.pow(x.unsqueeze(1).expand(n, m, d) - y.unsqueeze(0).expand(n, m, d), 2).sum(2)  # N x M
+
+
+def sep_loss(dist_mat):
+    min_dist = torch.exp(-1 * torch.min(dist_mat, dim=1).values)
+    loss = torch.mean(min_dist)
+    return loss
+
+
 class Trainer:
     def __init__(self, data_loaders, dataset, parameter):
         self.parameter = parameter
@@ -157,15 +171,16 @@ class Trainer:
             data['Hits@1'] += 1
         data['MRR'] += 1.0 / rank
 
-    def do_one_step(self, task, consolidated_masks, epoch=None, is_base=None, iseval=False, curr_rel=''):
+    def do_one_step(self, task, consolidated_masks, epoch=None, is_base=None, iseval=False, curr_rel='', base_rel=None):
         loss, p_score, n_score = 0, 0, 0
         if not iseval:
             self.optimizer.zero_grad()
-            p_score, n_score = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
+            p_score, n_score, dist_mat = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel, base_rel)
             y = torch.ones(p_score.shape[0], 1).to(self.device)
             # y = torch.Tensor([1]).to(self.device)
             loss = self.metaR.loss_func(p_score, n_score, y)
-            loss.backward()
+            loss = loss if is_base else loss + torch.sum(dist_mat)
+            loss.backward(retain_graph=True)
 
             # Continual Subnet no backprop
             if consolidated_masks is not None and consolidated_masks != {}:  # Only do this for tasks 1 and beyond
@@ -191,6 +206,7 @@ class Trainer:
         bad_counts = 0
         num_tasks = 8  # TODO: update it in parser
         base_task = None
+        base_rel_emb = None
 
         per_task_masks, consolidated_masks = {}, {}
         MRR_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
@@ -218,10 +234,7 @@ class Trainer:
                             train_task[j] = train_task[j] + (base_task[j][i.item()],)
                 # Test train_task num
                 loss, _, _ = self.do_one_step(train_task, consolidated_masks, epoch, is_base, iseval=False,
-                                              curr_rel=curr_rel)
-                # if e == 0:  # TODO: test module move later
-                #     test_task(train_task)
-
+                                              curr_rel=curr_rel, base_rel=base_rel_emb)
                 # print the loss on specific epoch
                 if e % self.print_epoch == 0:
                     loss_num = loss.item()
@@ -264,6 +277,7 @@ class Trainer:
 
             previous_relation = curr_rel  # cache previous relations
             base_task = train_task if is_base else base_task
+            base_rel_emb = list(self.metaR.rel_q_sharing.values())[0].squeeze() if is_base else base_rel_emb
 
             # Consolidate task masks to keep track of parameters to-update or not
             per_task_masks[task] = self.metaR.relation_learner.get_masks()

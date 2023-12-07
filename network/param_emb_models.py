@@ -4,6 +4,14 @@ import torch
 from network.subnet import SubnetLinear, EntityMask
 
 
+def euclidean_dist(x, y):
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    # return x.sum()
+    return torch.pow(x.unsqueeze(1).repeat(1, m, 1) - y.unsqueeze(0).repeat(n, 1, 1), 2).sum(2)  # N x M
+
+
 class PERelationMetaLearner(nn.Module):
     def __init__(self, few, embed_size=100, num_hidden1=500, num_hidden2=200, out_size=100, dropout_p=0.5,
                  sparsity=0.5, base_relation=30, novel_relation=3):  # TODO: update relation_num
@@ -111,7 +119,7 @@ class PEMetaR(nn.Module):
                                 negative[:, :, 1, :]], 1).unsqueeze(2)
         return pos_neg_e1, pos_neg_e2
 
-    def forward(self, task, mode, epoch, is_base, iseval=False, curr_rel=''):
+    def forward(self, task, mode, epoch, is_base, iseval=False, curr_rel='', base_rel=None):
         # transfer task string into embedding
         support, support_negative, query, negative = [self.embedding(t) for t in task]
 
@@ -150,9 +158,11 @@ class PEMetaR(nn.Module):
 
             self.rel_q_sharing[curr_rel] = rel_q
 
-        rel_q = rel_q.expand(-1, num_q + num_n, -1, -1)
+            rel_ = rel_q.clone() # TODO: test
+        # dist_matrix = euclidean_dist(rel_q.clone().detach().squeeze(), base_rel) if not is_base else None
+        rel_cur_q = rel_q.expand(-1, num_q + num_n, -1, -1)
 
         que_neg_e1, que_neg_e2 = self.split_concat(query, negative)  # [bs, nq+nn, 1, es]
-        p_score, n_score = self.embedding_learner(que_neg_e1, que_neg_e2, rel_q, num_q)
+        p_score, n_score = self.embedding_learner(que_neg_e1, que_neg_e2, rel_cur_q, num_q)
 
-        return p_score, n_score
+        return p_score, n_score, dist_matrix  # TODO: delete rel_qupdate later
