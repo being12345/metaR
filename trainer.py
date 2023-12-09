@@ -28,12 +28,15 @@ class Trainer:
         self.few = parameter['few']
         self.num_query = parameter['num_query']
         self.batch_size = parameter['batch_size']
+        self.num_tasks = parameter['num_tasks']
         self.learning_rate = parameter['learning_rate']
         self.early_stopping_patience = parameter['early_stopping_patience']
         # epoch
         self.epoch = parameter['epoch']
+        self.base_epoch = parameter['base_epoch']
         self.print_epoch = parameter['print_epoch']
         self.eval_epoch = parameter['eval_epoch']
+        self.base_eval_epoch = parameter['base_eval_epoch']
         self.checkpoint_epoch = parameter['checkpoint_epoch']
         # device
         self.device = parameter['device']
@@ -174,21 +177,23 @@ class Trainer:
         best_epoch = 0
         best_value = 0
         bad_counts = 0
-        num_tasks = 8  # TODO: update it in parser
-        MRR_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl MRR metrics
-        Hit1_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit1 metrics
-        Hit5_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit5 metrics
-        Hit10_val_mat = np.zeros((num_tasks, num_tasks))  # record fw and cl vl Hit10 metrics
-        val_mat = [MRR_val_mat, Hit1_val_mat, Hit5_val_mat, Hit10_val_mat]
 
-        train_task = None
-        for task in range(num_tasks):
+        MRR_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
+        Hit1_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
+        Hit5_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
+        Hit10_val_mat = np.zeros((self.num_tasks, self.num_tasks))  # record fw and cl vl MRR metrics
+        val_mat = [MRR_val_mat, Hit10_val_mat, Hit5_val_mat, Hit1_val_mat]
+
+        for task in range(self.num_tasks):
             # training by epoch
-            for e in range(self.epoch):
+            epoch = self.base_epoch if task == 0 else self.epoch
+            eval_epoch = self.base_eval_epoch if task == 0 else self.eval_epoch
+            for e in range(epoch):
                 is_last = False if e != self.epoch - 1 else True
                 is_base = True if task == 0 else False
+
                 # sample one batch from data_loader
-                for i in range(50):  # batch_size 1500
+                for i in range(10):  # batch_size 1500
                     cur_train_task, curr_rel = self.train_data_loader.next_batch(is_last, is_base)
                     if i == 0:
                         train_task = cur_train_task
@@ -205,40 +210,24 @@ class Trainer:
                     loss_num = loss.item()
                     self.write_training_log({'Loss': loss_num}, task, e)
                     print("Epoch: {}\tLoss: {:.4f}".format(e, loss_num))
-                # # save checkpoint on specific epoch
-                # if e % self.checkpoint_epoch == 0 and e != 0:
-                #     print('Epoch  {} has finished, saving...'.format(e))
-                #     self.save_checkpoint(e)
+
+                # save checkpoint on specific epoch
+                if e % self.checkpoint_epoch == 0 and e != 0:
+                    print('Epoch  {} has finished, saving...'.format(e))
+                    self.save_checkpoint(e)
 
                 # do evaluation on specific epoch
-                if e % self.eval_epoch == 0 and e != 0:
+                if e % eval_epoch == 0 and e != 0:
                     print('Epoch  {} has finished, validating few shot...'.format(e))
                     valid_data = self.fw_eval(task, istest=False, epoch=e)  # few shot val
                     self.write_fw_validating_log(valid_data, val_mat, task, e)
+
                 if task != 0 and e == self.epoch - 1:
                     print('Epoch  {} has finished, validating continual learning...'.format(e))
 
                     valid_data = self.novel_continual_eval(previous_relation, task,
                                                            istest=False)  # continual learning val only in last epoch
                     self.write_cl_validating_log(valid_data, val_mat, task)
-
-                    # metric = self.parameter['metric']
-                    # # early stopping checking
-                    # if valid_data[metric] > best_value:
-                    #     best_value = valid_data[metric]
-                    #     best_epoch = e
-                    #     print('\tBest model | {0} of valid set is {1:.3f}'.format(metric, best_value))
-                    #     bad_counts = 0
-                    #     # save current best
-                    #     self.save_checkpoint(best_epoch)
-                    # else:
-                    #     print('\tBest {0} of valid set is {1:.3f} at {2} | bad count is {3}'.format(
-                    #         metric, best_value, best_epoch, bad_counts))
-                    #     bad_counts += 1
-                    #
-                    # if bad_counts >= self.early_stopping_patience:
-                    #     print('\tEarly stopping at epoch %d' % e)
-                    #     break
 
             previous_relation = curr_rel  # cache previous relations
 
@@ -247,8 +236,6 @@ class Trainer:
         np.savetxt(os.path.join(self.csv_dir, 'Hit@5.csv'), Hit5_val_mat, delimiter=",")
         np.savetxt(os.path.join(self.csv_dir, 'Hit@1.csv'), Hit1_val_mat, delimiter=",")
         print('Training has finished')
-        # print('\tBest epoch is {0} | {1} of valid set is {2:.3f}'.format(best_epoch, metric, best_value))
-        # self.save_best_state_dict(best_epoch)
         print('Finish')
 
     def novel_continual_eval(self, previous_rel, task, istest=False):

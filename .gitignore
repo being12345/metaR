@@ -112,3 +112,11 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# NELL
+NELL
+
+# __macosx
+__MACOSX
+
+
+

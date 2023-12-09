@@ -7,7 +7,7 @@ def get_params():
     args.add_argument("-data", "--dataset", default="NELL-One", type=str)  # ["NELL-One", "Wiki-One"]
     args.add_argument("-path", "--data_path", default="./NELL", type=str)  # ["./NELL", "./Wiki"]
     args.add_argument("-form", "--data_form", default="Pre-Train", type=str)  # ["Pre-Train", "In-Train", "Discard"]
-    args.add_argument("-seed", "--seed", default=None, type=int)
+    args.add_argument("-seed", "--seed", default=42, type=int)
     args.add_argument("-few", "--few", default=3, type=int)
     # args.add_argument("-few", "--few", default=1, type=int)
     args.add_argument("-nq", "--num_query", default=3, type=int)
@@ -18,14 +18,15 @@ def get_params():
 
     args.add_argument("-dim", "--embed_dim", default=100, type=int)
     args.add_argument("-bs", "--batch_size", default=3, type=int)
+    args.add_argument("-nt", "--num_tasks", default=8, type=int)
     args.add_argument("-lr", "--learning_rate", default=0.001, type=float)
     args.add_argument("-es_p", "--early_stopping_patience", default=30, type=int)
 
-    # args.add_argument("-epo", "--epoch", default=100000, type=int)
-    args.add_argument("-epo", "--epoch", default=5499, type=int)
+    args.add_argument("-epo", "--epoch", default=1500, type=int)
+    args.add_argument("-bepo", "--base_epoch", default=5500, type=int)
     args.add_argument("-prt_epo", "--print_epoch", default=50, type=int)
-    args.add_argument("-eval_epo", "--eval_epoch", default=2499, type=int)
-    # args.add_argument("-eval_epo", "--eval_epoch", default=1000, type=int)
+    args.add_argument("-eval_epo", "--eval_epoch", default=1499, type=int)
+    args.add_argument("-beval_epo", "--base_eval_epoch", default=5449, type=int)
     args.add_argument("-ckpt_epo", "--checkpoint_epoch", default=1000, type=int)
 
     args.add_argument("-b", "--beta", default=5, type=float)

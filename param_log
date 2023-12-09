@@ -1,2 +1,5 @@
-# test batch_size batch_size == 1500
-python main.py --epoch 5500
++ baseline test batch size 3
+python main.py -br 3 -bepo 5500 -beval_epo 5549 -epo 500 -eval_epo 499 -prt_epo 100
+
++ baseline test batch size 30
+python main.py -br 30 -bepo 5500 -beval_epo 5549 -epo 500 -eval_epo 499 -prt_epo 100
