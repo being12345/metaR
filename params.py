@@ -73,7 +73,7 @@ def get_params():
 
     params['device'] = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 
-    return params, vaeargs
+    return params, vae_args
 
 
 data_dir = {

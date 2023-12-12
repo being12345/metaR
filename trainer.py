@@ -13,8 +13,10 @@ import logging
 
 
 class Trainer:
-    def __init__(self, data_loaders, dataset, parameter):
+    def __init__(self, data_loaders, dataset, parameter, vae_args):
         self.parameter = parameter
+        self.vae_args = vae_args
+
         # data loader
         self.train_data_loader = data_loaders[0]
         self.dev_data_loader = data_loaders[1]
@@ -40,7 +42,9 @@ class Trainer:
         # device
         self.device = parameter['device']
         self.metaR = PEMetaR(dataset, parameter)
+        self.cvae = ContrastVAE(self.vae_args)
         self.metaR.to(self.device)
+        self.cvae.to(self.device)
         # optimizer
         self.optimizer = torch.optim.Adam(self.metaR.parameters(), self.learning_rate)
         # tensorboard log writer
@@ -146,8 +150,6 @@ class Trainer:
         if rank == 1:
             data['Hits@1'] += 1
         data['MRR'] += 1.0 / rank
-
-
 
     def do_one_step(self, task, consolidated_masks, epoch=None, is_base=None, iseval=False, curr_rel=''):
         loss, p_score, n_score = 0, 0, 0

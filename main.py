@@ -61,7 +61,7 @@ if __name__ == '__main__':
     data_loaders = [train_data_loader, dev_data_loader, test_data_loader, few_shot_dev_data_loader]
 
     # trainer
-    trainer = Trainer(data_loaders, dataset, params)
+    trainer = Trainer(data_loaders, dataset, params, vae_args)
 
     if params['step'] == 'train':
         trainer.train()

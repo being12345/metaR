@@ -103,7 +103,6 @@ class PEMetaR(nn.Module):
                                                           num_hidden2=200, out_size=100, dropout_p=self.dropout_p,
                                                           sparsity=0.5)
         self.embedding_learner = EmbeddingLearner()
-        self.cvae = ContrastVAE()
         self.loss_func = nn.MarginRankingLoss(self.margin)
         self.rel_q_sharing = dict()
 
