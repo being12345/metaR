@@ -147,6 +147,8 @@ class Trainer:
             data['Hits@1'] += 1
         data['MRR'] += 1.0 / rank
 
+
+
     def do_one_step(self, task, consolidated_masks, epoch=None, is_base=None, iseval=False, curr_rel=''):
         loss, p_score, n_score = 0, 0, 0
         if not iseval:

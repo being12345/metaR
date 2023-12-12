@@ -86,7 +86,7 @@ class Intermediate(nn.Module):
         super(Intermediate, self).__init__()
         self.dense_1 = nn.Linear(args.hidden_size, args.hidden_size * 4)
         if isinstance(args.hidden_act, str):
-            self.intermediate_act_fn = F.relu   # TODO: use gelu
+            self.intermediate_act_fn = F.relu  # TODO: use gelu
         else:
             self.intermediate_act_fn = args.hidden_act
 
@@ -182,23 +182,12 @@ class ContrastVAE(nn.Module):
         self.apply(self.init_weights)
         self.temperature = nn.Parameter(torch.zeros(1), requires_grad=True)
 
-    def extended_attention_mask(self, input_ids):
-        attention_mask = (input_ids > 0).long()  # used for mu, var
-        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)  # torch.int64 b*1*1*max_Sq
-        max_len = attention_mask.size(-1)
-        attn_shape = (1, max_len, max_len)
-        subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1)  # torch.uint8 for causality
-        subsequent_mask = (subsequent_mask == 0).unsqueeze(1)  # 1*1*max_Sq*max_Sq
-        subsequent_mask = subsequent_mask.long()
-
-        if self.args.cuda_condition:
-            subsequent_mask = subsequent_mask.cuda()
-
-        extended_attention_mask = extended_attention_mask * subsequent_mask  # shape: b*1*max_Sq*max_Sq
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
-
-        return extended_attention_mask
+    def zero_attention_mask(self, input_ids):
+        """
+        :param input_ids: b*max_Sq*emb
+        :return: b*1*max_se1_seq
+        """
+        return torch.zeros((1, 1, input_ids.shape[0], input_ids.shape[0]))
 
     def eps_anneal_function(self, step):
 
@@ -214,11 +203,11 @@ class ContrastVAE(nn.Module):
             res = mu + std
         return res
 
-    def reparameterization1(self, mu, logvar, step):  # reparam without noise
+    def reparameterization1(self, mu, logvar):  # reparam without noise
         std = torch.exp(0.5 * logvar)
         return mu + std
 
-    def reparameterization2(self, mu, logvar, step):  # use dropout
+    def reparameterization2(self, mu, logvar):  # use dropout
 
         if self.training:
             std = self.latent_dropout(torch.exp(0.5 * logvar))
@@ -227,17 +216,10 @@ class ContrastVAE(nn.Module):
         res = mu + std
         return res
 
-    def reparameterization3(self, mu, logvar, step):  # apply classical dropout on whole result
-        std = torch.exp(0.5 * logvar)
-        res = self.latent_dropout(mu + std)
-        return res
-
     def init_weights(self, module):
         """ Initialize the weights.
         """
         if isinstance(module, (nn.Linear, nn.Embedding)):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
             module.weight.data.normal_(mean=0.0, std=self.args.initializer_range)
         elif isinstance(module, LayerNorm):
             module.bias.data.zero_()
@@ -263,37 +245,38 @@ class ContrastVAE(nn.Module):
         sequence_output = item_decoder_layers[-1]
         return sequence_output
 
-    def forward(self, input_ids, aug_input_ids, step):
+    def forward(self, input_ids):
+        zero_attention_mask = self.zero_attention_mask(input_ids)
 
-        sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
-        extended_attention_mask = self.extended_attention_mask(input_ids)
+        mu1, log_var1 = self.encode(input_ids, zero_attention_mask)
+        mu2, log_var2 = self.encode(input_ids, zero_attention_mask)
 
-        if self.args.latent_contrastive_learning:
-            mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
-            mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask)
-            z1 = self.reparameterization1(mu1, log_var1, step)
-            z2 = self.reparameterization2(mu2, log_var2, step)
-            reconstructed_seq1 = self.decode(z1, extended_attention_mask)
-            reconstructed_seq2 = self.decode(z2, extended_attention_mask)
-            return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
+        z1 = self.reparameterization1(mu1, log_var1)  # TODO: test
+        z2 = self.reparameterization2(mu2, log_var2)
+
+        reconstructed_seq1 = self.decode(z1, zero_attention_mask)
+        reconstructed_seq2 = self.decode(z2, zero_attention_mask)
+
+        return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # model
-    parser.add_argument("--model_name", default='ContrastVAE', type=str)
-    parser.add_argument("--hidden_size", type=int, default=128, help="hidden size of transformer model")
+    parser.add_argument("--hidden_size", type=int, default=200, help="hidden size of transformer model")
     parser.add_argument("--num_hidden_layers", type=int, default=1, help="number of layers")
     parser.add_argument('--num_attention_heads', default=4, type=int)
     parser.add_argument('--hidden_act', default="gelu", type=str)  # gelu relu
     parser.add_argument("--attention_probs_dropout_prob", type=float, default=0.0, help="attention dropout p")
     parser.add_argument("--hidden_dropout_prob", type=float, default=0.3, help="hidden dropout p")
     parser.add_argument("--initializer_range", type=float, default=0.02)
-    parser.add_argument('--max_seq_length', default=100, type=int)
+    parser.add_argument('--max_seq_length', default=1, type=int)
     # model variants
     parser.add_argument("--reparam_dropout_rate", type=float, default=0.2,
                         help="dropout rate for reparameterization dropout")
 
     args = parser.parse_args()
     model = ContrastVAE(args=args)
-    print(model)
+    relation = torch.ones(1, 1, 200)  # b * max_seq * emb
+
+    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = model(relation)
