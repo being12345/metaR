@@ -34,6 +34,8 @@ def get_params():
     # VAE variants
     args.add_argument("--reparam_dropout_rate", type=float, default=0.2,
                       help="dropout rate for reparameterization dropout")
+    args.add_argument("--latent_clr_weight", type=float, default=0.3, help="weight for latent clr loss")
+
     # contrastive loss
     args.add_argument('--temperature', type=float, default=0.5)
     # KL annealing args

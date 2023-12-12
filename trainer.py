@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from network.param_emb_models import *
+from cvaeutils import ContrastVAELoss
 from tensorboardX import SummaryWriter
 import os
 import sys
@@ -43,6 +44,7 @@ class Trainer:
         self.device = parameter['device']
         self.metaR = PEMetaR(dataset, parameter)
         self.cvae = ContrastVAE(self.vae_args)
+        self.cvae_loss = ContrastVAELoss(self.vae_args)
         self.metaR.to(self.device)
         self.cvae.to(self.device)
         # optimizer
@@ -156,11 +158,16 @@ class Trainer:
         if not iseval:
             self.optimizer.zero_grad()
             p_score, n_score, relation = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
+
             # cvae
             rel_task = relation.squeeze().mean(axis=0).unsqueeze(dim=0).unsqueeze(dim=0)
             reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
+            closs = self.cvae_loss.loss_fn_latent_clr(None, None,
+                                                      reconstructed_seq1, reconstructed_seq2, mu1, mu2,
+                                                      log_var1, log_var2, z1, z2, epoch)
+
             y = torch.ones(p_score.shape[0], 1).to(self.device)
-            loss = self.metaR.loss_func(p_score, n_score, y)
+            loss = self.metaR.loss_func(p_score, n_score, y) + closs
             loss.backward()
             # Continual Subnet no backprop
             if consolidated_masks is not None and consolidated_masks != {}:  # Only do this for tasks 1 and beyond

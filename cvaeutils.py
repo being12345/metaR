@@ -85,8 +85,8 @@ class ContrastVAELoss:
         kld_weight = self.kl_anneal_function(self.args.anneal_cap, step, self.args.total_annealing_step)
 
         """compute reconstruction loss from Trainer"""
-        recons_loss1, recons_auc = self.cross_entropy(reconstructed_seq1, target_pos_seq, target_neg_seq)  # TODO:
-        recons_loss2, recons_auc = self.cross_entropy(reconstructed_seq2, target_pos_seq, target_neg_seq)
+        # recons_loss1, recons_auc = self.cross_entropy(reconstructed_seq1, target_pos_seq, target_neg_seq)  # TODO:
+        # recons_loss2, recons_auc = self.cross_entropy(reconstructed_seq2, target_pos_seq, target_neg_seq)
 
         """compute clr loss"""
         user_representation1 = torch.sum(z1, dim=1)
@@ -94,9 +94,12 @@ class ContrastVAELoss:
 
         contrastive_loss = self.cl_criterion(user_representation1, user_representation2)
 
-        loss = recons_loss1 + recons_loss2 + kld_weight * (
-                kld_loss1 + kld_loss2) + self.args.latent_clr_weight * contrastive_loss
-        return loss, recons_auc
+        # loss = recons_loss1 + recons_loss2 + kld_weight * (
+        #         kld_loss1 + kld_loss2) + self.args.latent_clr_weight * contrastive_loss
+
+        loss = kld_weight * (kld_loss1 + kld_loss2) + self.args.latent_clr_weight * contrastive_loss
+        # return loss, recons_auc
+        return loss
 
 
 if __name__ == "__main__":
