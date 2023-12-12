@@ -162,9 +162,8 @@ class Trainer:
             # cvae
             rel_task = relation.squeeze().mean(axis=0).unsqueeze(dim=0).unsqueeze(dim=0)
             reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
-            closs = self.cvae_loss.loss_fn_latent_clr(None, None,
-                                                      reconstructed_seq1, reconstructed_seq2, mu1, mu2,
-                                                      log_var1, log_var2, z1, z2, epoch)
+            closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
+                                                      log_var1, log_var2, z1, z2, rel_task, epoch)
 
             y = torch.ones(p_score.shape[0], 1).to(self.device)
             loss = self.metaR.loss_func(p_score, n_score, y) + closs

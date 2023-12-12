@@ -208,7 +208,6 @@ class ContrastVAE(nn.Module):
         return mu + std
 
     def reparameterization2(self, mu, logvar):  # use dropout
-
         if self.training:
             std = self.latent_dropout(torch.exp(0.5 * logvar))
         else:
