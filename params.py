@@ -4,7 +4,6 @@ import argparse
 
 def get_params():
     args = argparse.ArgumentParser()
-    vaeargs = argparse.ArgumentParser()
 
     # data
     args.add_argument("-data", "--dataset", default="NELL-One", type=str)  # ["NELL-One", "Wiki-One"]
@@ -24,22 +23,22 @@ def get_params():
     args.add_argument("-p", "--dropout_p", default=0.5, type=float)
     args.add_argument("-abla", "--ablation", default=False, type=bool)
     # VAE model
-    vaeargs.add_argument("--hidden_size", type=int, default=200, help="hidden size of transformer model")
-    vaeargs.add_argument("--num_hidden_layers", type=int, default=1, help="number of layers")
-    vaeargs.add_argument('--num_attention_heads', default=4, type=int)
-    vaeargs.add_argument('--hidden_act', default="gelu", type=str)  # gelu relu
-    vaeargs.add_argument("--attention_probs_dropout_prob", type=float, default=0.0, help="attention dropout p")
-    vaeargs.add_argument("--hidden_dropout_prob", type=float, default=0.3, help="hidden dropout p")
-    vaeargs.add_argument("--initializer_range", type=float, default=0.02)
-    vaeargs.add_argument('--max_seq_length', default=1, type=int)
+    args.add_argument("--hidden_size", type=int, default=100, help="hidden size of transformer model")
+    args.add_argument("--num_hidden_layers", type=int, default=1, help="number of layers")
+    args.add_argument('--num_attention_heads', default=4, type=int)
+    args.add_argument('--hidden_act', default="gelu", type=str)  # gelu relu
+    args.add_argument("--attention_probs_dropout_prob", type=float, default=0.0, help="attention dropout p")
+    args.add_argument("--hidden_dropout_prob", type=float, default=0.3, help="hidden dropout p")
+    args.add_argument("--initializer_range", type=float, default=0.02)
+    args.add_argument('--max_seq_length', default=1, type=int)
     # VAE variants
-    vaeargs.add_argument("--reparam_dropout_rate", type=float, default=0.2,
+    args.add_argument("--reparam_dropout_rate", type=float, default=0.2,
                       help="dropout rate for reparameterization dropout")
     # contrastive loss
-    vaeargs.add_argument('--temperature', type=float, default=0.5)
+    args.add_argument('--temperature', type=float, default=0.5)
     # KL annealing args
-    vaeargs.add_argument('--anneal_cap', type=float, default=0.3)
-    vaeargs.add_argument('--total_annealing_step', type=int, default=10000)
+    args.add_argument('--anneal_cap', type=float, default=0.3)
+    args.add_argument('--total_annealing_step', type=int, default=10000)
     # train
     args.add_argument("-bs", "--batch_size", default=3, type=int)
     args.add_argument("-nt", "--num_tasks", default=8, type=int)
@@ -61,7 +60,6 @@ def get_params():
     args.add_argument("-eval_by_rel", "--eval_by_rel", default=False, type=bool)
 
     args = args.parse_args()
-    vae_args = vaeargs.parse_args()
     params = {}
     for k, v in vars(args).items():
         params[k] = v
@@ -73,7 +71,7 @@ def get_params():
 
     params['device'] = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 
-    return params, vae_args
+    return params, args
 
 
 data_dir = {

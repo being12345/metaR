@@ -151,10 +151,11 @@ class PEMetaR(nn.Module):
 
             self.rel_q_sharing[curr_rel] = rel_q
 
-        # add Contrastive learning
+        rel_q.retain_grad()
+        relation = rel_q
         rel_q = rel_q.expand(-1, num_q + num_n, -1, -1)
-
         que_neg_e1, que_neg_e2 = self.split_concat(query, negative)  # [bs, nq+nn, 1, es]
+
         p_score, n_score = self.embedding_learner(que_neg_e1, que_neg_e2, rel_q, num_q)
 
-        return p_score, n_score
+        return p_score, n_score, relation
