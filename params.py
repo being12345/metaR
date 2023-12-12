@@ -4,37 +4,53 @@ import argparse
 
 def get_params():
     args = argparse.ArgumentParser()
+    vaeargs = argparse.ArgumentParser()
+
+    # data
     args.add_argument("-data", "--dataset", default="NELL-One", type=str)  # ["NELL-One", "Wiki-One"]
     args.add_argument("-path", "--data_path", default="./NELL", type=str)  # ["./NELL", "./Wiki"]
     args.add_argument("-form", "--data_form", default="Pre-Train", type=str)  # ["Pre-Train", "In-Train", "Discard"]
     args.add_argument("-seed", "--seed", default=42, type=int)
     args.add_argument("-few", "--few", default=3, type=int)
-    # args.add_argument("-few", "--few", default=1, type=int)
     args.add_argument("-nq", "--num_query", default=3, type=int)
     args.add_argument("-bfew", "--base_classes_few", default=3, type=int)
     args.add_argument("-bnq", "--base_classes_num_query", default=3, type=int)
     args.add_argument("-br", "--base_classes_relation", default=30, type=int)
     args.add_argument("-metric", "--metric", default="MRR", choices=["MRR", "Hits@10", "Hits@5", "Hits@1"])
-
+    # metaR model
     args.add_argument("-dim", "--embed_dim", default=100, type=int)
+    args.add_argument("-b", "--beta", default=5, type=float)
+    args.add_argument("-m", "--margin", default=1, type=float)
+    args.add_argument("-p", "--dropout_p", default=0.5, type=float)
+    args.add_argument("-abla", "--ablation", default=False, type=bool)
+    # VAE model
+    vaeargs.add_argument("--hidden_size", type=int, default=200, help="hidden size of transformer model")
+    vaeargs.add_argument("--num_hidden_layers", type=int, default=1, help="number of layers")
+    vaeargs.add_argument('--num_attention_heads', default=4, type=int)
+    vaeargs.add_argument('--hidden_act', default="gelu", type=str)  # gelu relu
+    vaeargs.add_argument("--attention_probs_dropout_prob", type=float, default=0.0, help="attention dropout p")
+    vaeargs.add_argument("--hidden_dropout_prob", type=float, default=0.3, help="hidden dropout p")
+    vaeargs.add_argument("--initializer_range", type=float, default=0.02)
+    vaeargs.add_argument('--max_seq_length', default=1, type=int)
+    # VAE variants
+    vaeargs.add_argument("--reparam_dropout_rate", type=float, default=0.2,
+                      help="dropout rate for reparameterization dropout")
+    # contrastive loss
+    vaeargs.add_argument('--temperature', type=float, default=0.5)
+    # KL annealing args
+    vaeargs.add_argument('--anneal_cap', type=float, default=0.3)
+    vaeargs.add_argument('--total_annealing_step', type=int, default=10000)
+    # train
     args.add_argument("-bs", "--batch_size", default=3, type=int)
     args.add_argument("-nt", "--num_tasks", default=8, type=int)
     args.add_argument("-lr", "--learning_rate", default=0.001, type=float)
     args.add_argument("-es_p", "--early_stopping_patience", default=30, type=int)
-    # args.add_argument("-epo", "--epoch", default=100000, type=int)
     args.add_argument("-epo", "--epoch", default=1500, type=int)
     args.add_argument("-bepo", "--base_epoch", default=5500, type=int)
     args.add_argument("-prt_epo", "--print_epoch", default=50, type=int)
     args.add_argument("-eval_epo", "--eval_epoch", default=1499, type=int)
     args.add_argument("-beval_epo", "--base_eval_epoch", default=5449, type=int)
-    # args.add_argument("-eval_epo", "--eval_epoch", default=1000, type=int)
     args.add_argument("-ckpt_epo", "--checkpoint_epoch", default=1000, type=int)
-
-    args.add_argument("-b", "--beta", default=5, type=float)
-    args.add_argument("-m", "--margin", default=1, type=float)
-    args.add_argument("-p", "--dropout_p", default=0.5, type=float)
-    args.add_argument("-abla", "--ablation", default=False, type=bool)
-
     args.add_argument("-gpu", "--device", default=0, type=int)
 
     args.add_argument("-prefix", "--prefix", default="exp1", type=str)
@@ -45,6 +61,7 @@ def get_params():
     args.add_argument("-eval_by_rel", "--eval_by_rel", default=False, type=bool)
 
     args = args.parse_args()
+    vae_args = vaeargs.parse_args()
     params = {}
     for k, v in vars(args).items():
         params[k] = v
@@ -54,9 +71,9 @@ def get_params():
     elif args.dataset == 'Wiki-One':
         params['embed_dim'] = 50
 
-    params['device'] = torch.device("cuda:"+str(args.device) if torch.cuda.is_available() else "cpu")
+    params['device'] = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 
-    return params
+    return params, vaeargs
 
 
 data_dir = {

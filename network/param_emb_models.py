@@ -1,6 +1,8 @@
 from embedding import *
 from collections import OrderedDict
 import torch
+
+from network.contrastVAE import ContrastVAE
 from network.subnet import SubnetLinear, EntityMask
 
 
@@ -101,6 +103,7 @@ class PEMetaR(nn.Module):
                                                           num_hidden2=200, out_size=100, dropout_p=self.dropout_p,
                                                           sparsity=0.5)
         self.embedding_learner = EmbeddingLearner()
+        self.cvae = ContrastVAE()
         self.loss_func = nn.MarginRankingLoss(self.margin)
         self.rel_q_sharing = dict()
 
@@ -139,7 +142,6 @@ class PEMetaR(nn.Module):
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 y = torch.ones(p_score.shape[0], 1).to(device)
-                # y = torch.Tensor([1]).to(self.device)
                 self.zero_grad()
                 loss = self.loss_func(p_score, n_score, y)
                 loss.backward(retain_graph=True)
@@ -150,6 +152,7 @@ class PEMetaR(nn.Module):
 
             self.rel_q_sharing[curr_rel] = rel_q
 
+        # add Contrastive learning
         rel_q = rel_q.expand(-1, num_q + num_n, -1, -1)
 
         que_neg_e1, que_neg_e2 = self.split_concat(query, negative)  # [bs, nq+nn, 1, es]

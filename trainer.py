@@ -155,7 +155,6 @@ class Trainer:
             self.optimizer.zero_grad()
             p_score, n_score = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
             y = torch.ones(p_score.shape[0], 1).to(self.device)
-            # y = torch.Tensor([1]).to(self.device)
             loss = self.metaR.loss_func(p_score, n_score, y)
             loss.backward()
 

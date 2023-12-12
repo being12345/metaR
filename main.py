@@ -4,7 +4,7 @@ from data_loader import *
 import json
 
 if __name__ == '__main__':
-    params = get_params()
+    params, vae_args = get_params()
     print("---------Parameters---------")
     for k, v in params.items():
         print(k + ': ' + str(v))
