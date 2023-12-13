@@ -82,7 +82,7 @@ class ContrastVAELoss:
 
         kld_loss1 = torch.mean(-0.5 * torch.sum(1 + log_var1 - mu1 ** 2 - log_var1.exp(), dim=-1))
         kld_loss2 = torch.mean(-0.5 * torch.sum(1 + log_var2 - mu2 ** 2 - log_var2.exp(), dim=-1))
-        kld_weight = self.kl_anneal_function(self.args.anneal_cap, step, self.args.total_annealing_step)
+        # kld_weight = self.kl_anneal_function(self.args.anneal_cap, step, self.args.total_annealing_step)
 
         """compute reconstruction loss from Trainer"""
         recons_loss1 = ((reconstructed_seq1 - target_pos_seq) ** 2).mean()
@@ -94,8 +94,10 @@ class ContrastVAELoss:
 
         contrastive_loss = self.cl_criterion(user_representation1, user_representation2)
 
-        loss = recons_loss1 + recons_loss2 + kld_weight * (
-                kld_loss1 + kld_loss2) + self.args.latent_clr_weight * contrastive_loss
+        # loss = recons_loss1 + recons_loss2 + kld_weight * (
+        #         kld_loss1 + kld_loss2) + self.args.latent_clr_weight * contrastive_loss
+
+        loss = recons_loss1 + recons_loss2 + kld_loss1 + kld_loss2 + self.args.latent_clr_weight * contrastive_loss
 
         return loss
 
