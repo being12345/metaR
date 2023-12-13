@@ -159,17 +159,17 @@ class Trainer:
             self.optimizer.zero_grad()
             p_score, n_score, relation = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
 
+            y = torch.ones(p_score.shape[0], 1).to(self.device)
             # cvae
             if not is_base:
                 rel_task = relation.squeeze().unsqueeze(dim=0).unsqueeze(dim=0)  # TODO: mean?
                 reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
                 closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
                                                           log_var1, log_var2, z1, z2, rel_task, epoch)
+                loss = self.metaR.loss_func(p_score, n_score, y) + closs
             else:
-                closs = None
+                loss = self.metaR.loss_func(p_score, n_score, y)
 
-            y = torch.ones(p_score.shape[0], 1).to(self.device)
-            loss = self.metaR.loss_func(p_score, n_score, y) + closs
             loss.backward()
             # Continual Subnet no backprop
             if consolidated_masks is not None and consolidated_masks != {}:  # Only do this for tasks 1 and beyond
