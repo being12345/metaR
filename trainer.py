@@ -162,7 +162,7 @@ class Trainer:
             y = torch.ones(p_score.shape[0], 1).to(self.device)
             # cvae
             if not is_base:
-                rel_task = relation.squeeze().unsqueeze(dim=0).unsqueeze(dim=0)  # TODO: mean?
+                rel_task = relation.squeeze().unsqueeze(dim=0)  # TODO: mean?
                 reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
                 closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
                                                           log_var1, log_var2, z1, z2, rel_task, epoch)
