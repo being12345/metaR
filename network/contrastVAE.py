@@ -245,7 +245,7 @@ class ContrastVAE(nn.Module):
         return sequence_output
 
     def forward(self, input_ids):
-        zero_attention_mask = self.zero_attention_mask(input_ids)
+        zero_attention_mask = self.zero_attention_mask(input_ids).to(self.args.device)
 
         mu1, log_var1 = self.encode(input_ids, zero_attention_mask)
         mu2, log_var2 = self.encode(input_ids, zero_attention_mask)
