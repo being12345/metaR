@@ -15,3 +15,8 @@ python main.py -bepo 20000 -epo 500 -br 51 -prt_epo 100 -beval_epo 19999  -eval_
 
 + novel 1 relation
 python main.py -br 44 -bepo
+
++ novel 1 relation
+python main.py -br 44 --batch_size 1 -bepo 2000 -beval_epo 1999 -epo 2000 -eval_epo 499 -prt_epo 100
+
+python main.py  -bepo 2000 -beval_epo 1999 -epo 1000 -eval_epo 499 -few 10 -nq 10 -prt_epo 100
