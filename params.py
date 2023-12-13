@@ -62,6 +62,7 @@ def get_params():
     args.add_argument("-eval_by_rel", "--eval_by_rel", default=False, type=bool)
 
     args = args.parse_args()
+    args.device = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
     params = {}
     for k, v in vars(args).items():
         params[k] = v
@@ -70,8 +71,6 @@ def get_params():
         params['embed_dim'] = 100
     elif args.dataset == 'Wiki-One':
         params['embed_dim'] = 50
-
-    params['device'] = torch.device("cuda:" + str(args.device) if torch.cuda.is_available() else "cpu")
 
     return params, args
 

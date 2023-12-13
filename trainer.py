@@ -163,7 +163,7 @@ class Trainer:
             # cvae
             if not is_base:
                 if epoch == 0:
-                    self.cvae.init_weights()
+                    self.cvae.apply(self.cvae.init_weights)
                 rel_task = relation.squeeze().unsqueeze(dim=0)  # TODO: mean?
                 reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
                 closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
@@ -213,7 +213,7 @@ class Trainer:
                         for j, cur in enumerate(train_task):
                             train_task[j] = train_task[j] + (base_task[j][i.item()],)
 
-                loss, _, _ = self.do_one_step(train_task, consolidated_masks, epoch, is_base, iseval=False,
+                loss, _, _ = self.do_one_step(train_task, consolidated_masks, e, is_base, iseval=False,
                                               curr_rel=curr_rel)
 
                 # print the loss on specific epoch
