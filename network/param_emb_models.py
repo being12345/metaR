@@ -5,11 +5,11 @@ from network.subnet import SubnetLinear, EntityMask
 
 
 class PERelationMetaLearner(nn.Module):
-    def __init__(self, few, embed_size=100, num_hidden1=500, num_hidden2=200, out_size=100, dropout_p=0.5,
+    def __init__(self, few, bfew, embed_size=100, num_hidden1=500, num_hidden2=200, out_size=100, dropout_p=0.5,
                  sparsity=0.5, base_relation=30, novel_relation=3):  # TODO: update relation_num
         super(PERelationMetaLearner, self).__init__()
-        self.base_mask = EntityMask(base_relation, few, 2 * embed_size)
-        self.novel_mask = EntityMask(novel_relation, few, 2 * embed_size)
+        self.base_mask = EntityMask(base_relation, bfew, 2 * embed_size)
+        # self.novel_mask = EntityMask(novel_relation, few, 2 * embed_size)
         self.embed_size = embed_size
         self.few = few
         self.out_size = out_size
@@ -44,8 +44,8 @@ class PERelationMetaLearner(nn.Module):
     def forward(self, inputs, mask, mode, epoch, is_base):
         if mask is None:
             mask = self.none_masks
-        if epoch == 0 and not is_base:
-            self.novel_mask.init_mask_parameters()
+        # if epoch == 0 and not is_base:
+        #     self.novel_mask.init_mask_parameters()
 
         size = inputs.shape
         x = inputs.contiguous().view(size[0], size[1], -1)
@@ -93,11 +93,13 @@ class PEMetaR(nn.Module):
         self.embedding = Embedding(dataset, parameter)
 
         if parameter['dataset'] == 'Wiki-One':
-            self.relation_learner = PERelationMetaLearner(parameter['few'], embed_size=50, num_hidden1=250,
+            self.relation_learner = PERelationMetaLearner(parameter['few'], parameter['base_classes_few'],
+                                                          embed_size=50, num_hidden1=250,
                                                           num_hidden2=100, out_size=50, dropout_p=self.dropout_p,
                                                           sparsity=0.5)
         elif parameter['dataset'] == 'NELL-One':
-            self.relation_learner = PERelationMetaLearner(parameter['few'], embed_size=100, num_hidden1=500,
+            self.relation_learner = PERelationMetaLearner(parameter['few'], parameter['base_classes_few'],
+                                                          embed_size=100, num_hidden1=500,
                                                           num_hidden2=200, out_size=100, dropout_p=self.dropout_p,
                                                           sparsity=0.5)
         self.embedding_learner = EmbeddingLearner()
