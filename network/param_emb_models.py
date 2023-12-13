@@ -8,7 +8,7 @@ from network.subnet import SubnetLinear, EntityMask
 
 class PERelationMetaLearner(nn.Module):
     def __init__(self, few, embed_size=100, num_hidden1=500, num_hidden2=200, out_size=100, dropout_p=0.5,
-                 sparsity=0.5, base_relation=30, novel_relation=3):  # TODO: update relation_num
+                 sparsity=0.5, base_relation=44, novel_relation=3):  # TODO: update relation_num
         super(PERelationMetaLearner, self).__init__()
         self.base_mask = EntityMask(base_relation, few, 2 * embed_size)
         self.novel_mask = EntityMask(novel_relation, few, 2 * embed_size)
