@@ -6,11 +6,20 @@ import numpy as np
 from network.param_emb_models import *
 from cvaeutils import ContrastVAELoss
 from tensorboardX import SummaryWriter
+from torch.autograd import Variable
 import os
 import sys
 import torch
 import shutil
 import logging
+
+
+def random_vice_param(data, model, vice_model):
+    for param, vice_param in zip(model.parameters(), vice_model.parameters()):
+        vice_param.data = param.data + 1 * torch.normal(0,  # TODO: update eta to param if effect
+                                                        torch.ones_like(param.data) * param.data.std())
+
+    return
 
 
 class Trainer:
@@ -43,9 +52,11 @@ class Trainer:
         # device
         self.device = parameter['device']
         self.metaR = PEMetaR(dataset, parameter)
+        self.vice_metaR = PEMetaR(dataset, parameter)
         self.cvae = ContrastVAE(self.vae_args)
         self.cvae_loss = ContrastVAELoss(self.vae_args)
         self.metaR.to(self.device)
+        self.vice_metaR.to(self.device)
         self.cvae.to(self.device)
         # optimizer
         self.optimizer = torch.optim.Adam(self.metaR.parameters(), self.learning_rate)
@@ -157,21 +168,24 @@ class Trainer:
         loss, p_score, n_score = 0, 0, 0
         if not iseval:
             self.optimizer.zero_grad()
-            p_score, n_score, relation = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
+            random_vice_param(task, self.metaR, self.vice_metaR)
+            _, _, vice_relation = self.vice_metaR(task, 'train', epoch, is_base, iseval, curr_rel)
+            vice_relation = Variable(vice_relation.detach().data, requires_grad=False)
 
+            p_score, n_score, relation = self.metaR(task, 'train', epoch, is_base, iseval, curr_rel)
             y = torch.ones(p_score.shape[0], 1).to(self.device)
             # cvae
-            if not is_base:
-                if epoch == 0:
-                    self.cvae.apply(self.cvae.init_weights)
-                rel_task = relation.squeeze().unsqueeze(dim=0)  # TODO: mean?
-                reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
-                closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
-                                                          log_var1, log_var2, z1, z2, rel_task, epoch)
-                loss = self.metaR.loss_func(p_score, n_score, y) + closs
-            else:
-                loss = self.metaR.loss_func(p_score, n_score, y)
-
+            # if not is_base:
+            #     if epoch == 0:
+            #         self.cvae.apply(self.cvae.init_weights)
+            #     rel_task = relation.squeeze().unsqueeze(dim=0)  # TODO: mean?
+            #     reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.cvae(rel_task)
+            #     closs = self.cvae_loss.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,
+            #                                               log_var1, log_var2, z1, z2, rel_task, epoch)
+            #     loss = self.metaR.loss_func(p_score, n_score, y) + closs
+            # else:
+            #     loss = self.metaR.loss_func(p_score, n_score, y)
+            loss = self.metaR.loss_func(p_score, n_score, y) + self.cvae_loss.cl_criterion(relation, vice_relation)
             loss.backward()
             # Continual Subnet no backprop
             if consolidated_masks is not None and consolidated_masks != {}:  # Only do this for tasks 1 and beyond

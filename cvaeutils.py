@@ -13,6 +13,8 @@ class NCELoss(nn.Module):
         self.cossim = nn.CosineSimilarity(dim=-1).to(self.device)
 
     def forward(self, batch_sample_one, batch_sample_two):  # batch_size*
+        batch_sample_one = batch_sample_one.squeeze()
+        batch_sample_two = batch_sample_two.squeeze()
 
         sim11 = self.cossim(batch_sample_one.unsqueeze(-2), batch_sample_one.unsqueeze(-3)) / self.temperature
         sim22 = self.cossim(batch_sample_two.unsqueeze(-2), batch_sample_two.unsqueeze(-3)) / self.temperature
