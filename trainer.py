@@ -1,3 +1,4 @@
+import pickle
 from copy import deepcopy
 
 import torch.nn.functional as F
@@ -234,6 +235,9 @@ class Trainer:
                     # Operation on sparsity
                     if consolidated_masks[key] is not None and per_task_masks[task][key] is not None:
                         consolidated_masks[key] = 1 - ((1 - consolidated_masks[key]) * (1 - per_task_masks[task][key]))
+
+        with open('saved_dictionary.pkl', 'wb') as f:
+            pickle.dump(per_task_masks, f)
 
         self.save_metrics(Hit10_val_mat, Hit1_val_mat, Hit5_val_mat, MRR_val_mat)
 
