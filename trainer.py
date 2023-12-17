@@ -164,8 +164,9 @@ class Trainer:
                     # Zero-out gradients
                     if hasattr(getattr(self.metaR.relation_learner, module_name), module_attr):
                         if getattr(getattr(self.metaR.relation_learner, module_name), module_attr) is not None:
-                            getattr(getattr(self.metaR.relation_learner, module_name), module_attr).grad[
-                                consolidated_masks[key] == 1.0] = 0
+                            getattr(getattr(self.metaR.relation_learner, module_name), module_attr).grad *= 1 - \
+                                                                                                            consolidated_masks[
+                                                                                                                key]
             self.optimizer.step()
         elif curr_rel != '':
             p_score, n_score = self.metaR(task, 'val', iseval, curr_rel)  # TODO: update iseval and mode
@@ -233,7 +234,12 @@ class Trainer:
                 for key in per_task_masks[task].keys():
                     # Operation on sparsity
                     if consolidated_masks[key] is not None and per_task_masks[task][key] is not None:
-                        consolidated_masks[key] = 1 - ((1 - consolidated_masks[key]) * (1 - per_task_masks[task][key]))
+                        # hard_mask = (consolidated_masks[key] & per_task_masks[task][key]) > 0
+                        # consolidated_masks[key][hard_mask] = 1
+
+                        random_gradient = torch.rand(consolidated_masks[key].shape)  # TODO: soft mask novel
+                        soft_mask = (per_task_masks[task][key]) > 0
+                        consolidated_masks[key] = torch.where(soft_mask, random_gradient, consolidated_masks[key])
 
         self.save_metrics(Hit10_val_mat, Hit1_val_mat, Hit5_val_mat, MRR_val_mat)
 
