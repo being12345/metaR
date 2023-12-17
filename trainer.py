@@ -16,8 +16,9 @@ import logging
 
 def random_vice_param(data, model, vice_model):
     for param, vice_param in zip(model.parameters(), vice_model.parameters()):
-        vice_param.data = param.data + 1 * torch.normal(0,  # TODO: update eta to param if effect
-                                                        torch.ones_like(param.data) * param.data.std())
+        vice_param.data = param.data.clone.detach() + 1 * torch.normal(0,  # TODO: update eta to param if effect
+                                                                       torch.ones_like(
+                                                                           param.data.clone.detach()) * param.data.clone.detach().std())
 
     return
 
